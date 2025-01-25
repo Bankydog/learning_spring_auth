@@ -17,6 +17,8 @@ public class SecurityConfig {
         http.authorizeHttpRequests((requests) -> requests
                 .requestMatchers("/contact").permitAll()
                 .requestMatchers("/public/**").permitAll()
+                .requestMatchers("/admin").denyAll()
+                .requestMatchers("/admin/**").denyAll()
                 .anyRequest().authenticated());
         //http.formLogin(withDefaults());
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));

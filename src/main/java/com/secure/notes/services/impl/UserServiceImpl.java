@@ -28,15 +28,15 @@ public class UserServiceImpl implements UserService {
 
     @Value("${frontend.url}")
     String frontendUrl;
-    
+
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
     @Autowired
     UserRepository userRepository;
 
     @Autowired
     RoleRepository roleRepository;
-
-    @Autowired
-    PasswordEncoder passwordEncoder;
 
     @Autowired
     PasswordResetTokenRepository passwordResetTokenRepository;
@@ -49,14 +49,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updateUserRole(Long userId, String roleName) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(userId).orElseThrow(()
+                -> new RuntimeException("User not found"));
         AppRole appRole = AppRole.valueOf(roleName);
         Role role = roleRepository.findByRoleName(appRole)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
         user.setRole(role);
         userRepository.save(user);
     }
-
 
     @Override
     public List<User> getAllUsers() {
@@ -97,6 +97,7 @@ public class UserServiceImpl implements UserService {
         return user.orElseThrow(() -> new RuntimeException("User not found with username: " + username));
     }
 
+
     @Override
     public void updateAccountLockStatus(Long userId, boolean lock) {
         User user = userRepository.findById(userId).orElseThrow(()
@@ -104,6 +105,7 @@ public class UserServiceImpl implements UserService {
         user.setAccountNonLocked(!lock);
         userRepository.save(user);
     }
+
 
     @Override
     public List<Role> getAllRoles() {
@@ -134,6 +136,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+
     @Override
     public void updatePassword(Long userId, String password) {
         try {
@@ -148,27 +151,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void generatePasswordResetToken(String email){
-        User user = userRepository.findByEmail(email).orElseThrow(()-> new RuntimeException("User not found"));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
         String token = UUID.randomUUID().toString();
         Instant expiryDate = Instant.now().plus(24, ChronoUnit.HOURS);
         PasswordResetToken resetToken = new PasswordResetToken(token, expiryDate, user);
         passwordResetTokenRepository.save(resetToken);
 
         String resetUrl = frontendUrl + "/reset-password?token=" + token;
+        // Send email to user
         emailService.sendPasswordResetEmail(user.getEmail(), resetUrl);
     }
+
 
     @Override
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(()->new RuntimeException("Invalid Password reset token"));
-        if(resetToken.isUsed()){
-            throw new RuntimeException("Password reset token has already been used");
-        }
+                .orElseThrow(() -> new RuntimeException("Invalid password reset token"));
 
-        if(resetToken.getExpiryDate().isBefore(Instant.now())){
+        if (resetToken.isUsed())
+            throw new RuntimeException("Password reset token has already been used");
+
+        if (resetToken.getExpiryDate().isBefore(Instant.now()))
             throw new RuntimeException("Password reset token has expired");
-        }
 
         User user = resetToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -193,7 +199,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public GoogleAuthenticatorKey generate2FASecret(Long userId){
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new RuntimeException("User note found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         GoogleAuthenticatorKey key = totpService.generateSecret();
         user.setTwoFactorSecret(key.getKey());
         userRepository.save(user);
@@ -203,14 +209,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean validate2FACode(Long userId, int code){
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new RuntimeException("User note found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         return totpService.verifyCode(user.getTwoFactorSecret(), code);
     }
 
     @Override
     public void enable2FA(Long userId){
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new RuntimeException("User note found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         user.setTwoFactorEnabled(true);
         userRepository.save(user);
     }
@@ -218,8 +224,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public void disable2FA(Long userId){
         User user = userRepository.findById(userId)
-                .orElseThrow(()->new RuntimeException("User note found"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
         user.setTwoFactorEnabled(false);
         userRepository.save(user);
     }
+
+
 }

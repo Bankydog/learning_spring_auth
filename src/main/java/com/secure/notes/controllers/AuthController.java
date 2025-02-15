@@ -225,6 +225,7 @@ public class AuthController {
     public ResponseEntity<String> verify2FA(@RequestParam int code) {
         Long userId = authUtil.loggedInUserId();
         boolean isValid = userService.validate2FACode(userId, code);
+        System.out.println("User ID: " + userId + ", Code: " + code + ", isValid: " + isValid);
         if (isValid) {
             userService.enable2FA(userId);
             return ResponseEntity.ok("2FA Verified");
